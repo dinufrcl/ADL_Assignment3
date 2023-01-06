@@ -86,7 +86,7 @@ def test_model(data_loader):
 
             y_hat_flatten = y_hat.flatten(start_dim=2)
             _, max_ind = y_hat_flatten.max(-1)
-            y_hat_coords = torch.stack([max_ind // 128, max_ind % 128], -1)  # ???
+            y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
 
             # transform coordinates back to the original image size
             y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2  # ????
