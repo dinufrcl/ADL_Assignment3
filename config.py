@@ -2,7 +2,7 @@ import numpy as np
 import os
 from glob import glob
 from PIL import Image
-
+import torch
 
 # keypoint_colors = {'head': ( 70, 70, 70),
 #                        'rsho': (100, 40, 40),
@@ -22,23 +22,23 @@ from PIL import Image
 #                        'lsti': (200, 20,100),
 #                        'lsta': (85, 266, 5)}
 
-keypoint_colors = {'head': "darkblue",
-                       'rsho': "meadiumseagreen",
-                       'relb': "darksalmon",
-                       'rhan': "mediumpurple",
-                       'lsho': "orchid",
-                       'lelb': "midnightblue",
-                       'lhan': "firebrick",
-                       'rhip': "orange",
-                       'rkne': "darkolivegreen",
-                       'rank': "darkblue",
-                       'lhip': "dimgrey",
-                       'lkne': "palevioletred",
-                       'lank': "indigo",
-                       'rsti': "orangered",
-                       'rsta': "yellowgreen",
-                       'lsti': "coral",
-                       'lsta': "paleturquoise"}
+# keypoint_colors = {'head': "darkblue",
+#                        'rsho': "meadiumseagreen",
+#                        'relb': "darksalmon",
+#                        'rhan': "mediumpurple",
+#                        'lsho': "orchid",
+#                        'lelb': "midnightblue",
+#                        'lhan': "firebrick",
+#                        'rhip': "orange",
+#                        'rkne': "darkolivegreen",
+#                        'rank': "darkblue",
+#                        'lhip': "dimgrey",
+#                        'lkne': "palevioletred",
+#                        'lank': "indigo",
+#                        'rsti': "orangered",
+#                        'rsta': "yellowgreen",
+#                        'lsti': "coral",
+#                        'lsta': "paleturquoise"}
 
 
 keypoint_ids = {'head': 0,
@@ -153,7 +153,39 @@ def load_dataset(annotation_path, image_base_path, offset_columns=4):
     #                      [str(r) for r in frame_num] + ").jpg"*len(events))
 
 
+def transfer_keypoints_original_img_space(keypoints, bounding_boxes, resize_factor, device):
+    # output from dataset size
+    keypoints[:, :, [0, 1]] = keypoints[:, :, [0, 1]] * 2
 
+    # before resize
+    resize = torch.repeat_interleave(resize_factor, 17).to(device)
+
+    keypoints = keypoints.double()
+    keypoints.flatten(0, 1)[:, 0] = keypoints.flatten(0, 1)[:, 0] / resize.squeeze(0)
+    keypoints.flatten(0, 1)[:, 1] = keypoints.flatten(0, 1)[:, 1] / resize.squeeze(0)
+
+    # before bounding box
+    bb = torch.stack(bounding_boxes).transpose(0, 1).to(device)
+    bb = torch.repeat_interleave(bb, 17, 0)
+    keypoints.flatten(0, 1)[:, [0, 1]] += bb[:, [0, 2]]
+
+    return keypoints
+
+
+def retrieve_max_activations(y_hat, device, threshold=0.2):
+    max_act = torch.amax(y_hat, dim=[2, 3]).to(device)
+    visible = torch.where(max_act > threshold)
+
+    y_hat_flatten = y_hat.flatten(start_dim=2).to(device)
+    _, max_ind = y_hat_flatten.max(-1)
+    y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1).to(device)
+
+    pad_func = torch.nn.ConstantPad1d((0, 1), 0)
+    y_hat_coords = pad_func(y_hat_coords)
+    y_hat_coords[visible[0], visible[1], 2] = 1
+    y_hat_coords = y_hat_coords[:, :, [1, 0, 2]]
+
+    return y_hat_coords
 
 
 if __name__ == "__main__":

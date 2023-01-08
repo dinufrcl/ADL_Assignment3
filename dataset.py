@@ -19,22 +19,30 @@ class SkijumpDataset(torch.utils.data.Dataset):
                  img_size,
                  use_heatmap=False,
                  use_augment=False,
-                 heatmap_size=None):
+                 heatmap_size=None,
+                 use_random_scale=False,
+                 return_bounding_box_and_resize_factor=False):
         self.img_paths = img_paths
-        self.keypoints = keypoints
-        self.bounding_boxes = bounding_boxes
+        self.keypoints = keypoints.copy()
+        self.bounding_boxes = bounding_boxes.copy()
         self.img_size = img_size
         self.use_heatmap = use_heatmap
         self.use_augment = use_augment
+        self.use_random_scale = use_random_scale
         self.heatmap_size = heatmap_size
         self.num_examples = len(self.img_paths)
-
+        self.return_bounding_box = return_bounding_box_and_resize_factor
+        self.img_orig = []
+        self.paths_used =[]
 
     def __getitem__(self, idx):
         img_path = self.img_paths[idx]
+        self.paths_used.append(img_path)
         img = Image.open(img_path)
+        img_orig = img.copy()
+        self.img_orig.append(img_orig)
         bounding_box = self.bounding_boxes[idx]
-        keypoints = self.keypoints[idx]
+        keypoints = self.keypoints[idx].copy()
 
         # normalize img
         img = TF.to_tensor(img)
@@ -53,6 +61,9 @@ class SkijumpDataset(torch.utils.data.Dataset):
         # crop keypoints with bounding box
         keypoints[:, 0] -= bounding_box[0]
         keypoints[:, 1] -= bounding_box[2]
+
+        if self.use_random_scale:
+            img, keypoints = random_scale(img, keypoints, 0.5, height, width)
 
         # from visualization import *
         # npimg = convert_tensor_numpy(img)
@@ -98,7 +109,6 @@ class SkijumpDataset(torch.utils.data.Dataset):
                                                 rot=rot)
 
         # resize to img_size
-        # todo: Koordinaten nicht mit resize anpassen ??
         resize_factor = self.img_size / img.shape[1]
         img = TF.resize(img, [self.img_size, self.img_size])
 
@@ -120,9 +130,11 @@ class SkijumpDataset(torch.utils.data.Dataset):
             # npimg = convert_tensor_numpy(img)
             # plot_img_with_keypoints(npimg, keypoints)
 
-            return img, keypoints
+            if self.return_bounding_box:
 
-
+                return img, keypoints, bounding_box, resize_factor
+            else:
+                return img, keypoints
 
     @classmethod
     def augment(cls, img, label, rot, trans_x, trans_y, flip, h, w):
@@ -164,6 +176,8 @@ class SkijumpDataset(torch.utils.data.Dataset):
             # todo: fehlt hier noch was? sh. oben --> make sure to change left and right?
             label = label[cls.coords_hflip, :]
 
+        # label[:, [0,1]] = label[:, [0,1]] * 2
+
         """ set coords to invisible that moved out of image """
         label[:, 2] = np.where((label[:, 0] > img_size) |
                                (label[:, 0] < 0) |
@@ -181,6 +195,21 @@ class SkijumpDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
+def random_scale(img, keypoints, scale, height, width):
+    if torch.rand(1) > 0.5:
+        img = TF.resize(img, [height, int(width * scale)])
+        keypoints[:, 0] = keypoints[:, 0] * scale
+    else:
+        img = TF.resize(img, [int(height * scale), width])
+        keypoints[:, 1] = keypoints[:, 1] * scale
+
+    # from visualization import *
+    # npimg = convert_tensor_numpy(img)
+    # plot_img_with_keypoints(npimg, keypoints)
+
+    return img, keypoints
+
+
 def create_heatmaps(joints, output_size, sigma=2):
     blob_size = 6 * sigma + 3
     heatmaps = []
@@ -191,7 +220,8 @@ def create_heatmaps(joints, output_size, sigma=2):
             heatmaps.append(hm)
         else:
             # create blob
-            blob = torch.vstack([torch.repeat_interleave(torch.arange(blob_size), blob_size), torch.tile(torch.arange(blob_size), (blob_size,))])
+            blob = torch.vstack([torch.repeat_interleave(torch.arange(blob_size), blob_size),
+                                 torch.tile(torch.arange(blob_size), (blob_size,))])
             x = (blob[0, :] - 7) ** 2
             y = (blob[1, :] - 7) ** 2
             g = torch.exp(- (x + y) / (2 * sigma ** 2))

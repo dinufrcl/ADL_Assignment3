@@ -10,7 +10,7 @@ def plot_img_with_keypoints(img, keypoints):
     num_keypoints = keypoints.shape[0]
 
     color = iter(cm.rainbow(np.linspace(0, 1, num_keypoints)))
-    classes = np.array(list(keypoint_colors.keys()))
+    classes = np.array(list(keypoint_ids.keys()))
     fig, ax = plt.subplots()
     ax.imshow(img)
     for i in range(num_keypoints):
@@ -65,21 +65,21 @@ def plot_img_with_heatmaps(img, heatmaps):
     heatmaps = heatmaps.numpy()
     heatmaps = np.transpose(heatmaps, (1, 2, 0))
 
-    # fig = plt.figure()
-    # fig.add_subplot(4, 5, 1)
-    # plt.imshow(npimg)
-    # plt.axis('off')
-    #
-    # for i in range(heatmaps.shape[2]):
-    #     fig.add_subplot(4, 5, i+2)
-    #     plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.5)
-    #     plt.axis('off')
-    #
-    # plt.show()
-
-
-    plt.figure()
+    fig = plt.figure()
+    fig.add_subplot(4, 5, 1)
     plt.imshow(npimg)
+    plt.axis('off')
+
     for i in range(heatmaps.shape[2]):
-        plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.1)
+        fig.add_subplot(4, 5, i+2)
+        plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.5)
+        plt.axis('off')
+
     plt.show()
+
+
+    # plt.figure()
+    # plt.imshow(npimg)
+    # for i in range(heatmaps.shape[2]):
+    #     plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.1)
+    # plt.show()

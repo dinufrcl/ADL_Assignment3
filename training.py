@@ -1,6 +1,6 @@
 import torch.nn
 
-from training_config_2_3 import *
+from training_config_2_5_1 import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from PCK_metric import *
@@ -16,6 +16,37 @@ def train_step(x_batch, y_batch):
     if device == 'cuda':
         with torch.autocast(device):
             y_hat = model.forward(x_batch)
+
+            # with torch.no_grad():
+            #     img = x_batch[0, :, :, :].to("cpu")
+            #     npimg = convert_tensor_numpy(img)
+            #     heatmaps = y_hat[0, :, :, :].to("cpu")
+            #
+            #
+            #     plot_img_with_heatmaps(img, heatmaps)
+            #
+            #     max_act = torch.amax(y_hat, dim=[2, 3])
+            #
+            #     visible = torch.where(max_act > 0.2)
+            #
+            #     y_hat_flatten = y_hat.flatten(start_dim=2)
+            #     _, max_ind = y_hat_flatten.max(-1)
+            #     y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
+            #
+            #     # transform coordinates back to the original image size
+            #     y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2  # ????
+            #
+            #     pad_func = torch.nn.ConstantPad1d((0, 1), 0)
+            #     y_hat_coords = pad_func(y_hat_coords)
+            #
+            #     y_hat_coords[visible[0], visible[1], 2] = 1
+            #
+            #     y_hat_coords = y_hat_coords[:, :, [1, 0, 2]]
+            #
+            #     img = x_batch[0, :, :, :].to("cpu")
+            #     coords = y_hat_coords[0,:,:].to("cpu")
+            #     npimg = convert_tensor_numpy(img)
+            #     plot_img_with_keypoints(npimg, coords)
 
             loss = loss_function(y_hat, y_batch)
 
@@ -80,13 +111,12 @@ def test_model(data_loader):
 
             #heatmaps = TF.resize(y_hat, [x_batch.shape[2], x_batch.shape[2]], interpolation=InterpolationMode.NEAREST)
 
-            max_act = torch.amax(y_hat, dim=[2, 3])
-
+            max_act = torch.amax(y_hat, dim=[2, 3]).to(device)
             visible = torch.where(max_act > 0.2)
 
-            y_hat_flatten = y_hat.flatten(start_dim=2)
+            y_hat_flatten = y_hat.flatten(start_dim=2).to(device)
             _, max_ind = y_hat_flatten.max(-1)
-            y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
+            y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1).to(device)  # ???
 
             # transform coordinates back to the original image size
             y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2  # ????
@@ -175,8 +205,8 @@ if __name__ == "__main__":
 
     paths, keypoints, bounding_boxes = load_dataset(os.path.join(annotation_path, "train.csv"), image_base_path)
     train_dataset = SkijumpDataset(paths,
-                                   keypoints,
-                                   bounding_boxes,
+                                   keypoints.copy(),
+                                   bounding_boxes.copy(),
                                    img_size=128,
                                    heatmap_size=64,
                                    use_augment=True,

@@ -1,10 +1,8 @@
-import torch.nn
 from torch.utils.tensorboard import SummaryWriter
 from models import *
 from dataset import *
 from torchsummary import summary
 import sys
-import torchvision.transforms.functional as TF
 
 # device config
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -19,7 +17,7 @@ torch.manual_seed(0)
 np.random.seed(0)
 
 # model config
-model = ResNet18Model()
+model = ResNet18ASPPModel()
 model = model.to(device)
 
 # training config
@@ -32,11 +30,11 @@ scaler = torch.cuda.amp.GradScaler()
 training_history = []
 continue_training = False
 performed_epochs = 0
-save_path = 'data/ResNet18Model' # save best model
-save_path2 = 'data/ResNet18Model_backup' # save for backup if continue_training==True
+save_path = 'data/ResNet18ASPPModel' # save best model
+save_path2 = 'data/ResNet18ASPPModel_backup' # save for backup if continue_training==True
 
 # tensorboard config
-writer = SummaryWriter("runs/ResNet18Model")
+writer = SummaryWriter("runs/ResNet18ASPPModel")
 
 # test model
 summary(model, (3, 128, 128))

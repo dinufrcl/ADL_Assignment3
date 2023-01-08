@@ -23,20 +23,20 @@ model = HRNetw32Model()
 model = model.to(device)
 
 # training config
-optimizer = torch.optim.Adam(model.parameters(), lr=1.e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=1.e-3)
 loss_function = torch.nn.MSELoss()
-n_epochs = 10
+n_epochs = 300
 
 scaler = torch.cuda.amp.GradScaler()
 
 training_history = []
 continue_training = False
 performed_epochs = 0
-save_path = 'data/HRNetModel' # save best model
-save_path2 = 'data/HRNetModel_backup' # save for backup if continue_training==True
+save_path = 'data/HRNetModel_v2' # save best model
+save_path2 = 'data/HRNetModel_v2_backup' # save for backup if continue_training==True
 
 # tensorboard config
-writer = SummaryWriter("runs/HRNetModel")
+writer = SummaryWriter("runs/HRNetModel_v2")
 
 # test model
 # model(torch.rand((2,3,128,128), device=device))
