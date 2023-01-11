@@ -48,6 +48,8 @@ class HRNetw32Model(torch.nn.Module):
         super(HRNetw32Model, self).__init__()
         self.backbone = timm.create_model('hrnet_w32', pretrained=True)
 
+        # todo: PCK schwankt sehr stark --> liegt am Modell oder Umrechnung der Koordinaten?
+
         # self.basic_block = torch.nn.Sequential(
         #     torch.nn.Conv2d(32, 32, 3, padding=1, bias=False),
         #     torch.nn.BatchNorm2d(32),
@@ -85,6 +87,54 @@ class HRNetw32Model(torch.nn.Module):
         x = self.backbone_func(x)
         x = self.head(x)
         return x
+
+
+class HRNetw32ASPPModel(torch.nn.Module):
+    def __init__(self):
+        super(HRNetw32ASPPModel, self).__init__()
+        self.backbone = timm.create_model('hrnet_w32', pretrained=True)
+
+        self.aspp = ASPP(32, 32)
+
+        # self.basic_block = torch.nn.Sequential(
+        #     torch.nn.Conv2d(32, 32, 3, padding=1, bias=False),
+        #     torch.nn.BatchNorm2d(32),
+        #     torch.nn.ReLU()
+        # )
+
+        self.basic_block = models.resnet.BasicBlock(32, 32)
+
+        self.up = torch.nn.UpsamplingBilinear2d(scale_factor=2)
+
+        self.out = torch.nn.Conv2d(32, 17, 1)
+
+    def backbone_func(self, x):
+        # Stem
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        x = self.backbone.act1(x)
+        x = self.backbone.conv2(x)
+        x = self.backbone.bn2(x)
+        x = self.backbone.act2(x)
+
+        # Stages
+        yl = self.backbone.stages(x)
+        return yl[0]
+
+    def head(self, x):
+        x = self.aspp.forward(x)
+        x = self.basic_block(x)
+        x = self.up(x)
+        x = self.basic_block(x)
+        x = self.out(x)
+
+        return x
+
+    def forward(self, x):
+        x = self.backbone_func(x)
+        x = self.head(x)
+        return x
+
 
 #
 # class ResNet18Backbone(torch.nn.Module):

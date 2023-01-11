@@ -35,7 +35,6 @@ def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
     dist = torch.where((annotations[:,:,2]!=0) & (predictions[:,:,2]==0), abs(dist), dist)
     #dist = torch.where((annotations[:, :, 2] == 0) & (predictions[:, :, 2] == 0), dist-100000, dist) #??
 
-    # todo: wie soll pck denn höher sein wenn so viele in preds unsichtbar???
 
     pck_per_class = torch.count_nonzero(dist < 0, dim = 0) / num_all_keypoints
     overall_pck = torch.count_nonzero(dist < 0) / num_all_keypoints.sum()
@@ -45,10 +44,6 @@ def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
     #dist = (predictions[visible][:,[0,1]] - annotations[visible][:,[0,1]]).pow(2).sum(1).sqrt() #?
 
    # dist = (predictions[:, :, [0, 1]] - annotations[:, :, [0, 1]]).pow(2).sum(1).sqrt()
-    # todo: unsichtbare keypoints aus korrekten rausfiltern durch dist auf positiven Wert,
-    # todo: keypoints zählen die in targets unsichtbar sind und aus num_keypoints raus
-    # todo: alle keypoints die in targets unsichtbar sind zu korrekten durch Zahl kleiner 0 --> sonst Zahl richtiger keypoints zu klein
-    # todo: PCK Berechnung hier korrekt? --> Ergebnisse unten vergleichen
     # check whether distance is < d_max --> count occurences
     #correct_pred = torch.count_nonzero(dist<d_max[visible[0]]) #???
     #dist = dist - d_max
@@ -57,6 +52,8 @@ def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
 
 # 0.65
 # 0.89
+
+# todo: PCK Wert nochmal überprüfen
 
 if __name__ == "__main__":
     _, predictions, _ = load_dataset(os.path.join(os.getcwd(),"predictions.csv"), image_base_path, 2)

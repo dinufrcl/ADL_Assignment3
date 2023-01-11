@@ -5,7 +5,6 @@ from matplotlib.pyplot import cm
 import torchvision.transforms.functional as TF
 from torchvision.transforms import InterpolationMode
 
-# todo: keypoints mit verschiedenen Farben ausgeben
 def plot_img_with_keypoints(img, keypoints):
     num_keypoints = keypoints.shape[0]
 
@@ -56,10 +55,11 @@ def convert_tensor_numpy(img):
     return npimg
 
 def plot_img_with_heatmaps(img, heatmaps):
+    # todo: overlapping heatmap ?
+
     npimg = convert_tensor_numpy(img)
 
     if heatmaps.shape[1] < npimg.shape[1]:
-        # todo: Heatmap Punkte werden sehr groß
         heatmaps = TF.resize(heatmaps, [npimg.shape[1], npimg.shape[1]], interpolation=InterpolationMode.NEAREST)
 
     heatmaps = heatmaps.numpy()

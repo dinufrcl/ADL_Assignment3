@@ -1,6 +1,6 @@
 import torch.nn
 
-from training_config_2_5_1 import *
+from training_config_2_5_2 import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from PCK_metric import *
@@ -73,17 +73,14 @@ def train_step(x_batch, y_batch):
     #         _, max_ind = y_hat_flatten.max(-1)
     #         y_hat = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
     #
-    #         # todo: transform coordinates back to the original image size (bounding box Größe)
     #
     #         y_hat[:, :, [0, 1]] = y_hat[:, :, [0, 1]] * 2  # ????
     #
-    #         # todo: visibiliy ??? --> durch wenig strengen Schwellenwert
     #         pad_func = torch.nn.ConstantPad1d((0,1), 1)
     #         y_hat = pad_func(y_hat)
     #
     #         loss = loss_function(y_hat.float(), y_batch.float())
     #
-    #         # todo: backward funktioniert nicht --> kein Gradient?
     #         scaler.scale(loss).backward()
     #         scaler.step(optimizer)
     #         scaler.update()
@@ -140,45 +137,6 @@ def test_model(data_loader):
     return torch.mean(torch.stack(pck_values))
 
 
-    # model.eval()
-    # optimizer.zero_grad()
-    # loss = []
-    # correct_pred = 0
-    # num_keypoints = 0
-    # with torch.no_grad():
-    #     for x_batch, y_batch in data_loader:
-    #         x_batch = x_batch.to(device)
-    #         y_batch = y_batch.to(device)
-    #         y_hat = model.forward(x_batch)
-    #
-    #         # retrieve maximum activations
-    #         # y_hat_max = torch.amax(y_hat, dim=(2,3)) #keepdim=True?
-    #         # y_hat_max_idx = torch.where(y_hat[:,:, -1]==y_hat_max)
-    #
-    #         # https://stackoverflow.com/questions/69518359/pytorch-argmax-across-multiple-dimensions
-    #         y_hat_flatten = y_hat.view(16, 16, -1)
-    #         _, max_ind = y_hat_flatten.max(-1)
-    #         y_hat = torch.stack([max_ind // 64, max_ind % 64], -1) #???
-    #
-    #         # transform coordinates back to the original image size
-    #         y_hat[:,:,[0,1]] = y_hat[:,:,[0,1]] * 2 # ????
-    #
-    #         # todo: visibiliy ???
-    #         pad_func = torch.nn.ConstantPad1d((0, 1), 1)
-    #         y_hat = pad_func(y_hat)
-    #
-    #         _ ,c, n = compute_PCK(y_hat, y_batch)
-    #
-    #         correct_pred += c
-    #         num_keypoints += n
-    #
-    #         loss.append(loss_function(y_hat, y_batch)) # Wo?
-    #
-    #     pck = correct_pred / num_keypoints
-    #     mean_loss = torch.mean(torch.stack(loss))
-    #
-    #     return pck, mean_loss
-
 def train(n_epochs, train_data_loader, validation_data_loader):
     for epoch in tqdm(range(n_epochs)):
         for x_batch, y_batch in train_data_loader:
@@ -210,7 +168,8 @@ if __name__ == "__main__":
                                    img_size=128,
                                    heatmap_size=64,
                                    use_augment=True,
-                                   use_heatmap=True)
+                                   use_heatmap=True,
+                                   use_random_scale=use_random_scale)
 
     train_data_loader = DataLoader(dataset=train_dataset,
                                    batch_size=16,

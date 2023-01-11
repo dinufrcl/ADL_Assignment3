@@ -25,6 +25,7 @@ model = model.to(device)
 # training config
 optimizer = torch.optim.Adam(model.parameters(), lr=1.e-3)
 loss_function = torch.nn.MSELoss()
+use_random_scale = False
 n_epochs = 300
 
 scaler = torch.cuda.amp.GradScaler()

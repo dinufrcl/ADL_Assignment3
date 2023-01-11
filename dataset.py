@@ -52,9 +52,9 @@ class SkijumpDataset(torch.utils.data.Dataset):
         # plot_img_with_keypoints(npimg, keypoints)
 
         # crop image with bounding box
-        # todo: h und w richtig?
         img = img[:, bounding_box[2]:bounding_box[3], bounding_box[0]:bounding_box[1]]
 
+        # todo: h und w richtig?
         height = img.size()[1]
         width = img.size()[2]
 
@@ -62,8 +62,13 @@ class SkijumpDataset(torch.utils.data.Dataset):
         keypoints[:, 0] -= bounding_box[0]
         keypoints[:, 1] -= bounding_box[2]
 
+        # from visualization import *
+        # npimg = convert_tensor_numpy(img)
+        # plot_img_with_keypoints(npimg, keypoints)
+
         if self.use_random_scale:
-            img, keypoints = random_scale(img, keypoints, 0.5, height, width)
+            scale = random.uniform(0.3, 2)
+            img, keypoints = random_scale(img, keypoints, scale, height, width)
 
         # from visualization import *
         # npimg = convert_tensor_numpy(img)
@@ -81,6 +86,7 @@ class SkijumpDataset(torch.utils.data.Dataset):
         else:
             img = TF.pad(img, (0, 0, 0, dx))
 
+        # from visualization import *
         # npimg = convert_tensor_numpy(img)
         # plot_img_with_keypoints(npimg, keypoints)
 
@@ -138,12 +144,6 @@ class SkijumpDataset(torch.utils.data.Dataset):
 
     @classmethod
     def augment(cls, img, label, rot, trans_x, trans_y, flip, h, w):
-        # todo: cls für flip
-        # wie flip ist wird als Klassenattribut festgelegt
-        # wird benötigt damit man danach noch keypoints richtig zuordnen kann
-        # dafür für Klasse festlegen welche keypoints wo sind --> static Attribute
-        # hier so ähnlich wie static Methode
-
         img_size = img.size()[1]
 
         """ apply rotation & translation to img """
@@ -173,7 +173,6 @@ class SkijumpDataset(torch.utils.data.Dataset):
         """ apply horizontal flip to coords """
         if flip:
             label[:, 0] = img_size - label[:, 0] - 1
-            # todo: fehlt hier noch was? sh. oben --> make sure to change left and right?
             label = label[cls.coords_hflip, :]
 
         # label[:, [0,1]] = label[:, [0,1]] * 2
@@ -188,7 +187,6 @@ class SkijumpDataset(torch.utils.data.Dataset):
         # npimg = convert_tensor_numpy(img)
         # plot_img_with_keypoints(npimg, label)
 
-        # todo: um 30% der Bildgröße verschieben
 
         return img, label
 
@@ -325,7 +323,7 @@ if __name__ == "__main__":
     annotation_path = os.path.join(annotation_path, "train.csv")
     ds = load_dataset(annotation_path, image_base_path)
 
-    train_dataset = SkijumpDataset(ds[0], ds[1], ds[2], 200, use_augment=True)
+    train_dataset = SkijumpDataset(ds[0], ds[1], ds[2], 200, use_augment=True, use_random_scale=True)
 
     img, keypoints = train_dataset.__getitem__(20)
 

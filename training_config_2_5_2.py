@@ -17,11 +17,11 @@ torch.manual_seed(0)
 np.random.seed(0)
 
 # model config
-model = ResNet18ASPPModel()
+model = HRNetw32ASPPModel()
 model = model.to(device)
 
 # training config
-optimizer = torch.optim.Adam(model.parameters(), lr=1.e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=1.e-3)
 loss_function = torch.nn.MSELoss()
 use_random_scale = False
 n_epochs = 400
@@ -31,11 +31,11 @@ scaler = torch.cuda.amp.GradScaler()
 training_history = []
 continue_training = False
 performed_epochs = 0
-save_path = 'data/ResNet18ASPPModel' # save best model
-save_path2 = 'data/ResNet18ASPPModel_backup' # save for backup if continue_training==True
+save_path = 'data/HRNetw32ASPPModel' # save best model
+save_path2 = 'data/HRNetw32ASPPModel_backup' # save for backup if continue_training==True
 
 # tensorboard config
-writer = SummaryWriter("runs/ResNet18ASPPModel")
+writer = SummaryWriter("runs/HRNetw32ASPPModel")
 
 # test model
-summary(model, (3, 128, 128))
+# model(torch.rand((2,3,128,128), device=device))

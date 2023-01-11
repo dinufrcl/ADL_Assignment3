@@ -105,6 +105,8 @@ if __name__ == "__main__":
     output_coords = output_coords.to("cpu").long()
     paths = data_loader.dataset.img_paths
 
+
+    # todo: funktioniert nicht richtig
     output = pd.DataFrame({"image_name": paths,
                            "head_x": output_coords[:, 0, 0].numpy(),
                            "head_y": output_coords[:, 0, 1].numpy(),
