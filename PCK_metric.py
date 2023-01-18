@@ -1,7 +1,3 @@
-import os
-
-import torch
-
 from config import *
 
 def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
@@ -21,10 +17,6 @@ def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
     d_max = d_max.repeat_interleave(num_keypoints)
     d_max = d_max.reshape(num_obs, num_keypoints)
 
-    # determine #keypoints per class while ignoring true invisible cases
-    # num_keypoints = annotations.size()[0] * annotations.size()[1]
-    # num_keypoints -= torch.count_nonzero((annotations[:,:,2]==0))
-
     num_all_keypoints = torch.full((num_keypoints, ), annotations.size()[0]).to(device)
     tmp = torch.count_nonzero((annotations[:, :, 2] == 0), 0)
     num_all_keypoints -= tmp
@@ -33,27 +25,11 @@ def compute_PCK(predictions, annotations, threshold=0.1, device="cpu"):
     dist -= d_max
     dist = torch.where(annotations[:,:,2]==0, abs(dist), dist)
     dist = torch.where((annotations[:,:,2]!=0) & (predictions[:,:,2]==0), abs(dist), dist)
-    #dist = torch.where((annotations[:, :, 2] == 0) & (predictions[:, :, 2] == 0), dist-100000, dist) #??
-
 
     pck_per_class = torch.count_nonzero(dist < 0, dim = 0) / num_all_keypoints
     overall_pck = torch.count_nonzero(dist < 0) / num_all_keypoints.sum()
 
-    # determine distance between true annotation and prediction points
-    #visible = torch.where((annotations[:,:,2]!=0) & (predictions[:,:,2]!=0))
-    #dist = (predictions[visible][:,[0,1]] - annotations[visible][:,[0,1]]).pow(2).sum(1).sqrt() #?
-
-   # dist = (predictions[:, :, [0, 1]] - annotations[:, :, [0, 1]]).pow(2).sum(1).sqrt()
-    # check whether distance is < d_max --> count occurences
-    #correct_pred = torch.count_nonzero(dist<d_max[visible[0]]) #???
-    #dist = dist - d_max
-
     return pck_per_class, overall_pck
-
-# 0.65
-# 0.89
-
-# todo: PCK Wert nochmal überprüfen
 
 if __name__ == "__main__":
     _, predictions, _ = load_dataset(os.path.join(os.getcwd(),"predictions.csv"), image_base_path, 2)
@@ -62,8 +38,8 @@ if __name__ == "__main__":
     predictions = torch.tensor(predictions).long()
     true_vals = torch.tensor(true_vals).long()
 
-    print(compute_PCK(predictions, true_vals)[1])
-    print(compute_PCK(predictions, true_vals, 0.2)[1])
+    print(compute_PCK(predictions, true_vals))
+    #print(compute_PCK(predictions, true_vals, 0.2))
 
 
 

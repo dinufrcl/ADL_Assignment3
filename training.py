@@ -1,9 +1,8 @@
 import torch.nn
 
-from training_config_2_5_2 import *
+from training_config_2_3 import *
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from PCK_metric import *
 from PCK_metric import compute_PCK
 from visualization import *
 
@@ -17,37 +16,6 @@ def train_step(x_batch, y_batch):
         with torch.autocast(device):
             y_hat = model.forward(x_batch)
 
-            # with torch.no_grad():
-            #     img = x_batch[0, :, :, :].to("cpu")
-            #     npimg = convert_tensor_numpy(img)
-            #     heatmaps = y_hat[0, :, :, :].to("cpu")
-            #
-            #
-            #     plot_img_with_heatmaps(img, heatmaps)
-            #
-            #     max_act = torch.amax(y_hat, dim=[2, 3])
-            #
-            #     visible = torch.where(max_act > 0.2)
-            #
-            #     y_hat_flatten = y_hat.flatten(start_dim=2)
-            #     _, max_ind = y_hat_flatten.max(-1)
-            #     y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
-            #
-            #     # transform coordinates back to the original image size
-            #     y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2  # ????
-            #
-            #     pad_func = torch.nn.ConstantPad1d((0, 1), 0)
-            #     y_hat_coords = pad_func(y_hat_coords)
-            #
-            #     y_hat_coords[visible[0], visible[1], 2] = 1
-            #
-            #     y_hat_coords = y_hat_coords[:, :, [1, 0, 2]]
-            #
-            #     img = x_batch[0, :, :, :].to("cpu")
-            #     coords = y_hat_coords[0,:,:].to("cpu")
-            #     npimg = convert_tensor_numpy(img)
-            #     plot_img_with_keypoints(npimg, coords)
-
             loss = loss_function(y_hat, y_batch)
 
             scaler.scale(loss).backward()
@@ -60,37 +28,6 @@ def train_step(x_batch, y_batch):
         loss.backward()
         optimizer.step()
 
-    # model.train()
-    # optimizer.zero_grad()
-    # x_batch = x_batch.to(device)
-    # y_batch = y_batch.to(device)
-    #
-    # if device == 'cuda':
-    #     with torch.autocast(device): # run with mixed precision
-    #         y_hat = model.forward(x_batch)
-    #         # https://stackoverflow.com/questions/69518359/pytorch-argmax-across-multiple-dimensions
-    #         y_hat_flatten = y_hat.view(16, 16, -1)
-    #         _, max_ind = y_hat_flatten.max(-1)
-    #         y_hat = torch.stack([max_ind // 64, max_ind % 64], -1)  # ???
-    #
-    #
-    #         y_hat[:, :, [0, 1]] = y_hat[:, :, [0, 1]] * 2  # ????
-    #
-    #         pad_func = torch.nn.ConstantPad1d((0,1), 1)
-    #         y_hat = pad_func(y_hat)
-    #
-    #         loss = loss_function(y_hat.float(), y_batch.float())
-    #
-    #         scaler.scale(loss).backward()
-    #         scaler.step(optimizer)
-    #         scaler.update()
-    # else:
-    #     y_hat = model.forward(x_batch)
-    #     loss = loss_function(y_hat, y_batch)
-    #
-    #     loss.backward()
-    #     optimizer.step()
-
 def test_model(data_loader):
     model.eval()
     optimizer.zero_grad()
@@ -100,13 +37,6 @@ def test_model(data_loader):
             x_batch = x_batch.to(device)
             y_batch = y_batch.to(device)
             y_hat = model.forward(x_batch)
-
-            # img = x_batch[0, :, :, :].to("cpu")
-            # npimg = convert_tensor_numpy(img)
-            # heatmaps = y_hat[0, :, :, :].to("cpu")
-            # plot_img_with_heatmaps(img, heatmaps)
-
-            #heatmaps = TF.resize(y_hat, [x_batch.shape[2], x_batch.shape[2]], interpolation=InterpolationMode.NEAREST)
 
             max_act = torch.amax(y_hat, dim=[2, 3]).to(device)
             visible = torch.where(max_act > 0.2)
@@ -124,11 +54,6 @@ def test_model(data_loader):
             y_hat_coords[visible[0], visible[1], 2] = 1
 
             y_hat_coords = y_hat_coords[:, :, [1,0,2]]
-
-            # img = x_batch[0, :, :, :].to("cpu")
-            # coords = y_hat_coords[0,:,:].to("cpu")
-            # npimg = convert_tensor_numpy(img)
-            # plot_img_with_keypoints(npimg, coords)
 
             _, pck = compute_PCK(y_hat_coords, y_batch, device=device)
 
@@ -169,7 +94,8 @@ if __name__ == "__main__":
                                    heatmap_size=64,
                                    use_augment=True,
                                    use_heatmap=True,
-                                   use_random_scale=use_random_scale)
+                                   use_random_scale=use_random_scale,
+                                   augment_prob=augment_prob)
 
     train_data_loader = DataLoader(dataset=train_dataset,
                                    batch_size=16,

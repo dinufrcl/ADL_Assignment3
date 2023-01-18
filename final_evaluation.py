@@ -9,6 +9,7 @@ import sys
 from visualization import *
 import pandas as pd
 
+model_name = "Resnet18ASPPAugProb0_5RandomScale"
 
 device = 'cpu'
 
@@ -17,8 +18,8 @@ if sys.gettrace() is None:
 else:
     num_workers = 0
 
-model = ResNet18Model().to(device)
-model.load_state_dict(torch.load('data/ResNet18Model' + "_model_weights.pth"))
+model = ResNet18ASPPModel().to(device)
+model.load_state_dict(torch.load('data/Resnet18ASPPAugProb0_5RandomScale' + "_model_weights.pth"))
 model.eval()
 
 paths, keypoints_orig, bounding_boxes = load_dataset(os.path.join(annotation_path, "val.csv"),
@@ -35,13 +36,13 @@ if __name__ == "__main__":
                                    heatmap_size=64,
                                    use_augment=False,
                                    use_heatmap=False,
-                             return_bounding_box_and_resize_factor=True)
+                                   return_bounding_box_and_resize_factor=True)
 
     idx = np.random.choice(len(keypoints_orig), 10, replace=False)
 
     j = 0
     with torch.no_grad():
-        for i in range(5):
+        for i in range(10):
             id = idx[i]
             img, _, bounding_box, resize_factor = dataset.__getitem__(id)
 
@@ -69,7 +70,6 @@ if __name__ == "__main__":
             # before resize
             resize = torch.repeat_interleave(torch.tensor(resize_factor), 17).to(device)
 
-            # resize = resize.unsqueeze(1).repeat(1, 2)
             y_hat_coords = y_hat_coords.double()
             y_hat_coords.flatten(0, 1)[:, 0] = y_hat_coords.flatten(0, 1)[:, 0] / resize
             y_hat_coords.flatten(0, 1)[:, 1] = y_hat_coords.flatten(0, 1)[:, 1] / resize
@@ -80,8 +80,6 @@ if __name__ == "__main__":
             y_hat_coords = y_hat_coords[:, :, [1, 0, 2]]
 
             # before bounding box
-            # bb = torch.tensor(bounding_box)
-            # bb = torch.repeat_interleave(bb, 17, 0)
             y_hat_coords.flatten(0, 1)[:, [0, 1]] += torch.tensor(bounding_box)[[0,2]]
 
             # show img with original keypoints and predicted keypoints
@@ -91,107 +89,3 @@ if __name__ == "__main__":
             plot_img_with_keypoints(dataset.img_orig[j], keypoints_selected)
 
             j += 1
-
-
-    # output_coords = None
-    # with torch.no_grad():
-    #     for x_batch, y_batch, bounding_box_list, resize_factor in data_loader:
-    #         x_batch = x_batch.to(device)
-    #         y_batch = y_batch.to(device)
-    #         y_hat = model.forward(x_batch)
-    #
-    #         # img = x_batch[1, :, :, :].to("cpu")
-    #         # npimg = convert_tensor_numpy(img)
-    #         # heatmaps = y_hat[1, :, :, :].to("cpu")
-    #         #
-    #         # plot_img_with_heatmaps(img, heatmaps)
-    #
-    #         y_hat_coords = retrieve_max_activations(y_hat, device)
-    #         y_hat_coords = transfer_keypoints_original_img_space(y_hat_coords, bounding_boxes, resize_factor, device)
-    #
-    #         # img = Image.open(paths[0])
-    #         # plot_img_with_keypoints(data_loader.dataset.img_orig[3], y_hat_coords[3,:,:].to("cpu"))
-    #
-    #
-    #         if output_coords is None:
-    #             output_coords = y_hat_coords
-    #         else:
-    #             output_coords = torch.cat([output_coords, y_hat_coords], dim=0)
-    #
-    # output_coords = output_coords.to("cpu").long()
-    # paths = data_loader.dataset.img_paths
-    #
-    # output = pd.DataFrame({"image_name": paths,
-    #                        "head_x": output_coords[:,0,0].numpy(),
-    #                        "head_y": output_coords[:,0,1].numpy(),
-    #                         "head_s": output_coords[:,0,2].numpy(),
-    #                        "rsho_x": output_coords[:, 1, 0].numpy(),
-    #                        "rsho_y": output_coords[:, 1, 1].numpy(),
-    #                        "rsho_s": output_coords[:, 1, 2].numpy(),
-    #                        "relb_x": output_coords[:, 2, 0].numpy(),
-    #                        "relb_y": output_coords[:, 2, 1].numpy(),
-    #                        "relb_s": output_coords[:, 2, 2].numpy(),
-    #                        "rhan_x": output_coords[:, 3, 0].numpy(),
-    #                        "rhan_y": output_coords[:, 3, 1].numpy(),
-    #                        "rhan_s": output_coords[:, 3, 2].numpy(),
-    #                        "lsho_x": output_coords[:, 4, 0].numpy(),
-    #                        "lsho_y": output_coords[:, 4, 1].numpy(),
-    #                        "lsho_s": output_coords[:, 4, 2].numpy(),
-    #                        "lelb_x": output_coords[:, 5, 0].numpy(),
-    #                        "lelb_y": output_coords[:, 5, 1].numpy(),
-    #                        "lelb_s": output_coords[:, 5, 2].numpy(),
-    #                        "lhan_x": output_coords[:, 6, 0].numpy(),
-    #                        "lhan_y": output_coords[:, 6, 1].numpy(),
-    #                        "lhan_s": output_coords[:, 6, 2].numpy(),
-    #                        "rhip_x": output_coords[:, 7, 0].numpy(),
-    #                        "rhip_y": output_coords[:, 7, 1].numpy(),
-    #                        "rhip_s": output_coords[:, 7, 2].numpy(),
-    #                        "rkne_x": output_coords[:, 8, 0].numpy(),
-    #                        "rkne_y": output_coords[:, 8, 1].numpy(),
-    #                        "rkne_s": output_coords[:, 8, 2].numpy(),
-    #                        "rank_x": output_coords[:, 9, 0].numpy(),
-    #                        "rank_y": output_coords[:, 9, 1].numpy(),
-    #                        "rank_s": output_coords[:, 9, 2].numpy(),
-    #                        "lhip_x": output_coords[:, 10, 0].numpy(),
-    #                        "lhip_y": output_coords[:, 10, 1].numpy(),
-    #                        "lhip_s": output_coords[:, 10, 2].numpy(),
-    #                        "lkne_x": output_coords[:, 11, 0].numpy(),
-    #                        "lkne_y": output_coords[:, 11, 1].numpy(),
-    #                        "lkne_s": output_coords[:, 11, 2].numpy(),
-    #                        "lank_x": output_coords[:, 12, 0].numpy(),
-    #                        "lank_y": output_coords[:, 12, 1].numpy(),
-    #                        "lank_s": output_coords[:, 12, 2].numpy(),
-    #                        "rsti_x": output_coords[:, 13, 0].numpy(),
-    #                        "rsti_y": output_coords[:, 13, 1].numpy(),
-    #                        "rsti_s": output_coords[:, 13, 2].numpy(),
-    #                        "rsta_x": output_coords[:, 14, 0].numpy(),
-    #                        "rsta_y": output_coords[:, 14, 1].numpy(),
-    #                        "rsta_s": output_coords[:, 14, 2].numpy(),
-    #                        "lsti_x": output_coords[:, 15, 0].numpy(),
-    #                        "lsti_y": output_coords[:, 15, 1].numpy(),
-    #                        "lsti_s": output_coords[:, 15, 2].numpy(),
-    #                        "lsta_x": output_coords[:, 16, 0].numpy(),
-    #                        "lsta_y": output_coords[:, 16, 1].numpy(),
-    #                        "lsta_s": output_coords[:, 16, 2].numpy()
-    #                        })
-    #
-    # output["image_name"] = output["image_name"].str[-14:]
-    # output["image_name"] = output["image_name"].str.replace("/", "")
-    #
-    # output.to_csv("output/" + test_model + "_output", sep=";", index=False, header=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

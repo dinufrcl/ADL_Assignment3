@@ -1,12 +1,7 @@
-import numpy as np
-import torch
 from config import *
-from PIL import Image
 import torchvision.transforms.functional as TF
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from visualization import plot_img_with_heatmaps
-import math
 import random
 
 class SkijumpDataset(torch.utils.data.Dataset):
@@ -21,7 +16,8 @@ class SkijumpDataset(torch.utils.data.Dataset):
                  use_augment=False,
                  heatmap_size=None,
                  use_random_scale=False,
-                 return_bounding_box_and_resize_factor=False):
+                 return_bounding_box_and_resize_factor=False,
+                 augment_prob=1):
         self.img_paths = img_paths
         self.keypoints = keypoints.copy()
         self.bounding_boxes = bounding_boxes.copy()
@@ -29,6 +25,7 @@ class SkijumpDataset(torch.utils.data.Dataset):
         self.use_heatmap = use_heatmap
         self.use_augment = use_augment
         self.use_random_scale = use_random_scale
+        self.augment_prob = augment_prob
         self.heatmap_size = heatmap_size
         self.num_examples = len(self.img_paths)
         self.return_bounding_box = return_bounding_box_and_resize_factor
@@ -43,6 +40,7 @@ class SkijumpDataset(torch.utils.data.Dataset):
         self.img_orig.append(img_orig)
         bounding_box = self.bounding_boxes[idx]
         keypoints = self.keypoints[idx].copy()
+        keypoints = keypoints.astype('float64')
 
         # normalize img
         img = TF.to_tensor(img)
@@ -67,8 +65,9 @@ class SkijumpDataset(torch.utils.data.Dataset):
         # plot_img_with_keypoints(npimg, keypoints)
 
         if self.use_random_scale:
-            scale = random.uniform(0.3, 2)
-            img, keypoints = random_scale(img, keypoints, scale, height, width)
+            if torch.rand(1) > self.augment_prob:
+                scale = random.uniform(0.3, 2)
+                img, keypoints = random_scale(img, keypoints, scale, height, width)
 
         # from visualization import *
         # npimg = convert_tensor_numpy(img)
@@ -91,28 +90,29 @@ class SkijumpDataset(torch.utils.data.Dataset):
         # plot_img_with_keypoints(npimg, keypoints)
 
         if self.use_augment:
-            # color augmentation
-            color_transform = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2,
-                                                                    hue=0.2)
-            img = color_transform(img)
+            if torch.rand(1) <= self.augment_prob:
+                # color augmentation
+                color_transform = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2,
+                                                                        hue=0.2)
+                img = color_transform(img)
 
-            rot = random.randint(-30, 30)
-            trans_x = random.randint(0, int(0.3 * img.size()[1]))
-            trans_y = random.randint(0, int(0.3 * img.size()[1]))
+                rot = random.randint(-30, 30)
+                trans_x = random.randint(0, int(0.3 * img.size()[1])) # todo: img_size hier?
+                trans_y = random.randint(0, int(0.3 * img.size()[1]))
 
-            if torch.rand(1) > 0.5:
-                flip = True
-            else:
-                flip = False
+                if torch.rand(1) <= 0.5:
+                    flip = True
+                else:
+                    flip = False
 
-            img, keypoints = SkijumpDataset.augment(img=img,
-                                                label=keypoints,
-                                                trans_x=trans_x,
-                                                trans_y=trans_y,
-                                                flip=flip,
-                                                h=height,
-                                                w=width,
-                                                rot=rot)
+                img, keypoints = SkijumpDataset.augment(img=img,
+                                                    label=keypoints,
+                                                    trans_x=trans_x,
+                                                    trans_y=trans_y,
+                                                    flip=flip,
+                                                    h=height,
+                                                    w=width,
+                                                    rot=rot)
 
         # resize to img_size
         resize_factor = self.img_size / img.shape[1]
@@ -130,7 +130,7 @@ class SkijumpDataset(torch.utils.data.Dataset):
 
             return img, heatmaps
         else:
-            keypoints = torch.tensor(keypoints).long()
+            keypoints = torch.tensor(keypoints).float()
 
             # from visualization import *
             # npimg = convert_tensor_numpy(img)
@@ -147,8 +147,6 @@ class SkijumpDataset(torch.utils.data.Dataset):
         img_size = img.size()[1]
 
         """ apply rotation & translation to img """
-        #center = [int(h/2), int(w/2)]
-        # todo: richiter Mittelpunkt?
         center = [int(w/2), int(h/2)]
         img = TF.affine(img, angle=rot, translate=[trans_x, trans_y], center=center, scale=1, shear=0)
 
@@ -160,8 +158,7 @@ class SkijumpDataset(torch.utils.data.Dataset):
         x = np.copy(label[:, 0])
         y = np.copy(label[:, 1])
 
-        # todo: math bib hier ok?
-        rot_rad = math.radians(rot)
+        rot_rad = np.radians(rot)
 
         label[:, 0] = (x - center[0]) * np.cos(rot_rad) - (y - center[1]) * np.sin(rot_rad) + center[0]
         label[:, 1] = (x - center[0]) * np.sin(rot_rad) + (y - center[1]) * np.cos(rot_rad) + center[1]
@@ -212,6 +209,25 @@ def create_heatmaps(joints, output_size, sigma=2):
     blob_size = 6 * sigma + 3
     heatmaps = []
 
+
+
+    #
+    # hm = torch.zeros((joints.shape[0], output_size, output_size))
+    # blob = torch.vstack([torch.repeat_interleave(torch.arange(blob_size), blob_size),
+    #                      torch.tile(torch.arange(blob_size), (blob_size,))])
+    # x = (blob[0, :] - 7) ** 2
+    # y = (blob[1, :] - 7) ** 2
+    # g = torch.exp(- (x + y) / (2 * sigma ** 2))
+    #
+    #
+    #
+    #
+    # x_coords = torch.repeat_interleave(torch.arange(joints[:, 0] - 7, joints[:, 0] + 8), blob_size)
+    # y_coords = torch.tile(torch.arange(joints[:, 1] - 7, joints[:, 1] + 8), (blob_size,))
+
+
+
+
     for joint in joints:
         hm = torch.zeros((output_size, output_size))
         if joint[2] == 0:
@@ -225,8 +241,8 @@ def create_heatmaps(joints, output_size, sigma=2):
             g = torch.exp(- (x + y) / (2 * sigma ** 2))
 
             # determine location of blob in hm
-            x_coords = torch.repeat_interleave(torch.arange(joint[0] - 7, joint[0] + 8), blob_size)
-            y_coords = torch.tile(torch.arange(joint[1] - 7, joint[1] + 8), (blob_size,))
+            x_coords = torch.repeat_interleave(torch.arange(int(joint[0]) - 7, int(joint[0]) + 8), blob_size)
+            y_coords = torch.tile(torch.arange(int(joint[1]) - 7, int(joint[1]) + 8), (blob_size,))
 
             y_coords = y_coords[x_coords < output_size]
             g = g[x_coords < output_size]
@@ -244,76 +260,6 @@ def create_heatmaps(joints, output_size, sigma=2):
     return torch.stack(heatmaps)
 
 
-
-
-
-    # for joint in joints:
-    #     hm = np.zeros((output_size, output_size))
-    #     if joint[2] == 0:
-    #         heatmaps.append(hm)
-    #     else:
-    #         # create blob
-    #         blob = np.vstack([np.repeat(np.arange(blob_size), blob_size), np.tile(np.arange(blob_size), blob_size)])
-    #         x = (blob[0, :] - 7) ** 2
-    #         y = (blob[1, :] - 7) ** 2
-    #         g = np.exp(- (x + y) / (2 * sigma ** 2))
-    #
-    #         # determine location of blob in hm
-    #         x_coords = np.repeat(np.arange(joint[0] - 7, joint[0] + 8), blob_size)
-    #         y_coords = np.tile(np.arange(joint[1] - 7, joint[1] + 8), blob_size)
-    #
-    #         y_coords = y_coords[x_coords < output_size]
-    #         g = g[x_coords < output_size]
-    #         x_coords = x_coords[x_coords < output_size]
-    #
-    #         x_coords = x_coords[y_coords < output_size]
-    #         g = g[y_coords < output_size]
-    #         y_coords = y_coords[y_coords < output_size]
-    #
-    #         # put blob in heatmap
-    #         hm[y_coords, x_coords] = g[np.where((y_coords < output_size) & (x_coords < output_size))]
-    #
-    #         heatmaps.append(hm)
-    #
-    # return torch.tensor(np.asarray(heatmaps))
-
-
-
-
-
-
-
-
-
-    # determine which keypoints are visible
-    # visibile = np.where(joints[:, 2] != 0)[0]
-    # non_visibile = np.where(joints[:, 2] == 0)[0]
-    # keypoints_non_visible = joints[non_visibile][:, [0, 1]]
-    # keypoints_visible = joints[visibile][:, [0, 1]]
-    #
-    # # empty heatmaps for non visible keypoints
-    #
-    # hm_coord = np.vstack([np.arange((6 * sigma + 3)), np.arange((6 * sigma + 3))])
-    # hm_coord = np.transpose(hm_coord)
-    # hm_coord = np.expand_dims(hm_coord, axis=0)
-    # hm_coord = np.repeat(hm_coord, keypoints_visible.shape[0], axis=0)
-    # hm_coord = np.transpose(hm_coord)
-    # keypoints_visible = np.transpose(keypoints_visible)
-    #
-    # # todo: x0 und y0 sind jeweils 7 und 7 da Mitte von Blobs
-    #
-    # x = (hm_coord[0,:,:] - keypoints_visible[0,:]) ** 2
-    # y = (hm_coord[1, :, :] - keypoints_visible[1, :]) ** 2
-    #
-    # # todo: hier kommen nur 0en raus --> x und y Ergebnisse zu hoch? Warum?
-    # g = np.exp(- (x+y) / (2 * sigma ** 2))
-
-    # todo: g Werte zu heatmap ändern?
-    # todo: Rückgabewert ist Listen von heatmaps? --> np Array mit Dim = Anzahl Keypoints
-    # todo: wie macht man overlay heatmaps?
-
-
-
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
@@ -323,7 +269,7 @@ if __name__ == "__main__":
     annotation_path = os.path.join(annotation_path, "train.csv")
     ds = load_dataset(annotation_path, image_base_path)
 
-    train_dataset = SkijumpDataset(ds[0], ds[1], ds[2], 200, use_augment=True, use_random_scale=True)
+    train_dataset = SkijumpDataset(ds[0], ds[1], ds[2], 200, use_heatmap=True, heatmap_size=200)
 
     img, keypoints = train_dataset.__getitem__(20)
 

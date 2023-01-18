@@ -4,43 +4,7 @@ from glob import glob
 from PIL import Image
 import torch
 
-# keypoint_colors = {'head': ( 70, 70, 70),
-#                        'rsho': (100, 40, 40),
-#                        'relb': (220, 20, 60),
-#                        'rhan': (153,153,153),
-#                        'lsho': (157,234, 50),
-#                        'lelb': (128, 64,128),
-#                        'lhan': (244, 35,232),
-#                        'rhip': (107,142, 35),
-#                        'rkne': (  0,  0,142),
-#                        'rank': (102,102,156),
-#                        'lhip': (220,220,  0),
-#                        'lkne': ( 70,130,180),
-#                        'lank': (180,165,180),
-#                        'rsti': (250,170, 30),
-#                        'rsta': (145,170,100),
-#                        'lsti': (200, 20,100),
-#                        'lsta': (85, 266, 5)}
-
-# keypoint_colors = {'head': "darkblue",
-#                        'rsho': "meadiumseagreen",
-#                        'relb': "darksalmon",
-#                        'rhan': "mediumpurple",
-#                        'lsho': "orchid",
-#                        'lelb': "midnightblue",
-#                        'lhan': "firebrick",
-#                        'rhip': "orange",
-#                        'rkne': "darkolivegreen",
-#                        'rank': "darkblue",
-#                        'lhip': "dimgrey",
-#                        'lkne': "palevioletred",
-#                        'lank': "indigo",
-#                        'rsti': "orangered",
-#                        'rsta': "yellowgreen",
-#                        'lsti': "coral",
-#                        'lsta': "paleturquoise"}
-
-
+""" keypoint lists """
 keypoint_ids = {'head': 0,
                        'rsho': 1,
                        'relb': 2,
@@ -77,9 +41,11 @@ keypoint_ids_r_s_swapped = {'head': 0,
                        'lsti': 13,
                        'lsta': 14}
 
+""" paths """
 annotation_path = os.path.join(os.getcwd(), "dataset/annotations")
 image_base_path = os.path.join(os.getcwd(), "dataset/annotated_frames")
 
+""" functions """
 def load_dataset(annotation_path, image_base_path, offset_columns=4):
     annotations = open(annotation_path)
 
@@ -142,57 +108,4 @@ def load_dataset(annotation_path, image_base_path, offset_columns=4):
         i += 1
 
     return paths, keypoints_list, bounding_boxes
-
-    # events = np.loadtxt(annotation_path, skiprows=2, delimiter=";",
-    #                          usecols=0, dtype=int).tolist()
-    # frame_num = np.loadtxt(annotation_path, skiprows=2, delimiter=";",
-    #                          usecols=1, dtype=int).tolist()
-    # paths = os.path.join(image_base_path*len(events),
-    #                      [str(r) for r in events],
-    #                      [str(r) for r in events] + "_("*len(events) +
-    #                      [str(r) for r in frame_num] + ").jpg"*len(events))
-
-
-def transfer_keypoints_original_img_space(keypoints, bounding_boxes, resize_factor, device):
-    # output from dataset size
-    keypoints[:, :, [0, 1]] = keypoints[:, :, [0, 1]] * 2
-
-    # before resize
-    resize = torch.repeat_interleave(resize_factor, 17).to(device)
-
-    keypoints = keypoints.double()
-    keypoints.flatten(0, 1)[:, 0] = keypoints.flatten(0, 1)[:, 0] / resize.squeeze(0)
-    keypoints.flatten(0, 1)[:, 1] = keypoints.flatten(0, 1)[:, 1] / resize.squeeze(0)
-
-    # before bounding box
-    bb = torch.stack(bounding_boxes).transpose(0, 1).to(device)
-    bb = torch.repeat_interleave(bb, 17, 0)
-    keypoints.flatten(0, 1)[:, [0, 1]] += bb[:, [0, 2]]
-
-    return keypoints
-
-
-def retrieve_max_activations(y_hat, device, threshold=0.2):
-    max_act = torch.amax(y_hat, dim=[2, 3]).to(device)
-    visible = torch.where(max_act > threshold)
-
-    y_hat_flatten = y_hat.flatten(start_dim=2).to(device)
-    _, max_ind = y_hat_flatten.max(-1)
-    y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1).to(device)
-
-    pad_func = torch.nn.ConstantPad1d((0, 1), 0)
-    y_hat_coords = pad_func(y_hat_coords)
-    y_hat_coords[visible[0], visible[1], 2] = 1
-    y_hat_coords = y_hat_coords[:, :, [1, 0, 2]]
-
-    return y_hat_coords
-
-
-if __name__ == "__main__":
-    # coordinates = np.loadtxt("/home/mmc-user/ass3/dataset/annotations/train.csv", skiprows=2, delimiter=";",
-    #            usecols=range(4, 55), dtype=int)
-    # print("test")
-    annotation_path = os.path.join(annotation_path, "train.csv")
-    ds = load_dataset(annotation_path, image_base_path)
-    print("test")
 

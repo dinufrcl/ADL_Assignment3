@@ -1,7 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 from models import *
 from dataset import *
-from torchsummary import summary
 import sys
 
 # device config
@@ -17,13 +16,14 @@ torch.manual_seed(0)
 np.random.seed(0)
 
 # model config
-model = ResNet18Model()
+model = ResNet18ASPPModel()
 model = model.to(device)
 
 # training config
 optimizer = torch.optim.Adam(model.parameters(), lr=1.e-4)
 loss_function = torch.nn.MSELoss()
 use_random_scale = True
+augment_prob = 0.5
 n_epochs = 400
 
 scaler = torch.cuda.amp.GradScaler()
@@ -31,11 +31,9 @@ scaler = torch.cuda.amp.GradScaler()
 training_history = []
 continue_training = False
 performed_epochs = 0
-save_path = 'data/ResNet18RandomScaleModel' # save best model
-save_path2 = 'data/ResNet18RandomScaleModel_backup' # save for backup if continue_training==True
+save_path = 'data/Resnet18ASPPAugProb0_5RandomScale' # save best model
+save_path2 = 'data/Resnet18ASPPAugProb0_5RandomScale_backup' # save for backup if continue_training==True
 
 # tensorboard config
-writer = SummaryWriter("runs/ResNet18RandomScaleModel")
+writer = SummaryWriter("runs/Resnet18ASPPAugProb0_5RandomScale")
 
-# test model
-summary(model, (3, 128, 128))

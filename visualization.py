@@ -65,21 +65,21 @@ def plot_img_with_heatmaps(img, heatmaps):
     heatmaps = heatmaps.numpy()
     heatmaps = np.transpose(heatmaps, (1, 2, 0))
 
-    fig = plt.figure()
-    fig.add_subplot(4, 5, 1)
-    plt.imshow(npimg)
-    plt.axis('off')
+    heatmap = np.sum(heatmaps, axis=2)
 
-    for i in range(heatmaps.shape[2]):
-        fig.add_subplot(4, 5, i+2)
-        plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.5)
-        plt.axis('off')
-
-    plt.show()
-
-
-    # plt.figure()
+    # fig = plt.figure()
+    # fig.add_subplot(4, 5, 1)
     # plt.imshow(npimg)
+    # plt.axis('off')
+    #
     # for i in range(heatmaps.shape[2]):
-    #     plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.1)
+    #     fig.add_subplot(4, 5, i+2)
+    #     plt.imshow(heatmaps[:, :, i], 'jet', interpolation='none', alpha=0.5)
+    #     plt.axis('off')
+    #
     # plt.show()
+
+    plt.figure()
+    plt.imshow(npimg)
+    plt.imshow(heatmap, 'jet', interpolation='none', alpha=0.3)
+    plt.show()

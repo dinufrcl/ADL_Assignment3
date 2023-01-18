@@ -24,6 +24,7 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1.e-4)
 loss_function = torch.nn.MSELoss()
 use_random_scale = False
+augment_prob = 0.5
 n_epochs = 400
 
 scaler = torch.cuda.amp.GradScaler()
@@ -31,11 +32,11 @@ scaler = torch.cuda.amp.GradScaler()
 training_history = []
 continue_training = False
 performed_epochs = 0
-save_path = 'data/ResNet18ASPPModel' # save best model
-save_path2 = 'data/ResNet18ASPPModel_backup' # save for backup if continue_training==True
+save_path = 'data/ResNet18ASPPModelAugProb0_5' # save best model
+save_path2 = 'data/ResNet18ASPPModelAugProb0_5_backup' # save for backup if continue_training==True
 
 # tensorboard config
-writer = SummaryWriter("runs/ResNet18ASPPModel")
+writer = SummaryWriter("runs/ResNet18ASPPModelAugProb0_5")
 
 # test model
 summary(model, (3, 128, 128))

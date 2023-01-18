@@ -9,7 +9,7 @@ import sys
 from visualization import *
 import pandas as pd
 
-test_model = "ResNet18"
+test_model = "ResNet18AugProb0_5"
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -20,10 +20,25 @@ else:
 
 if test_model == "ResNet18":
     model = ResNet18Model().to(device)
-    model.load_state_dict(torch.load('data/ResNet18Model' + "_model_weights.pth"))
-else:
+    model.load_state_dict(torch.load('data/ResNet18Model_v2' + "_model_weights.pth"))
+elif test_model == "HRNet":
     model = HRNetw32Model().to(device)
     model.load_state_dict(torch.load('data/HRNetModel' + "_model_weights.pth"))
+elif test_model == "ResNet18AugProb0_5":
+    model = ResNet18Model().to(device)
+    model.load_state_dict(torch.load('data/ResNet18Model_v2AugProb0_5' + "_model_weights.pth"))
+elif test_model == "ResNet18ASPPModelAugProb0_5":
+    model = ResNet18ASPPModel().to(device)
+    model.load_state_dict(torch.load('data/ResNet18ASPPModelAugProb0_5' + "_model_weights.pth"))
+elif test_model == "Resnet18ASPPAugProb0_5RandomScale":
+    model = ResNet18ASPPModel().to(device)
+    model.load_state_dict(torch.load('data/Resnet18ASPPAugProb0_5RandomScale' + "_model_weights.pth"))
+elif test_model == "HRNetw32ASPPModel_v2AugProb0_5":
+    model = HRNetw32Model().to(device)
+    model.load_state_dict(torch.load('data/HRNetModel_v2AugProb0_5' + "_model_weights.pth"))
+elif test_model == "HRNetw32ASPPModelAugProb0_5":
+    model = HRNetw32ASPPModel().to(device)
+    model.load_state_dict(torch.load('data/HRNetw32ASPPModelAugProb0_5' + "_model_weights.pth"))
 
 model.eval()
 
@@ -45,8 +60,8 @@ if __name__ == "__main__":
     data_loader = DataLoader(dataset=dataset,
                                    batch_size=16,
                                    num_workers=num_workers,
-                                   shuffle=True,
-                                   drop_last=True,
+                                   shuffle=False,
+                                   drop_last=False,
                                    worker_init_fn=seed_worker,
                                    generator=g
                                    )
@@ -69,12 +84,12 @@ if __name__ == "__main__":
 
             y_hat_flatten = y_hat.flatten(start_dim=2).to(device)
             _, max_ind = y_hat_flatten.max(-1)
-            y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1).to(device)  # ???
+            y_hat_coords = torch.stack([max_ind // 64, max_ind % 64], -1).to(device)
 
             # transform coordinates back to the original image size
 
             # output from dataset size
-            y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2  # ????
+            y_hat_coords[:, :, [0, 1]] = y_hat_coords[:, :, [0, 1]] * 2
 
             # before resize
             resize = torch.repeat_interleave(resize_factor, 17).to(device)
@@ -95,7 +110,7 @@ if __name__ == "__main__":
             y_hat_coords.flatten(0, 1)[:, [0, 1]] += bb[:, [0, 2]]
 
             # img = Image.open(paths[0])
-            # plot_img_with_keypoints(data_loader.dataset.img_orig[16+3], y_hat_coords[3,:,:].to("cpu"))
+            # plot_img_with_keypoints(data_loader.dataset.img_orig[0], y_hat_coords[0,:,:].to("cpu"))
 
             if output_coords is None:
                 output_coords = y_hat_coords
@@ -164,7 +179,7 @@ if __name__ == "__main__":
     output["image_name"] = output["image_name"].str[-14:]
     output["image_name"] = output["image_name"].str.replace("/", "")
 
-    output.to_csv("output/" + test_model + "_output", sep=";", index=False)
+    output.to_csv("output/" + test_model + "_output", sep=";", index=False, header=False)
 
 
 
